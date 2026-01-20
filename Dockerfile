@@ -61,7 +61,7 @@ WORKDIR /opt/storm/build
 RUN cmake -GNinja -DCMAKE_BUILD_TYPE=$storm_build_type \
           -DSTORM_PORTABLE=ON \
           -DSTORM_USE_LTO=OFF \
-          -DSTORM_DEVELOPER=ON ..
+          ..
 RUN ninja storm-cli -j 4
 
 WORKDIR /opt/
