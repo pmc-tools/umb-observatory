@@ -8,7 +8,6 @@ import umbi.io
 logger = logging.getLogger(__name__)
 
 
-
 #  LOGFILE Parsing
 # Taken from and adapted from a project by Alex Bork and Tim Quatmann
 def contains_any_of(log, msg):
@@ -30,13 +29,11 @@ def try_parse(log, start, before, after, out_dict, out_key, out_type):
 
 
 def parse_logfile_storm(log, inv):
-    unsupported_messages = (
-        ["ERROR (storm-cli.cpp:49): An exception caused Storm to terminate. The message of the exception is: NotSupportedException: Can not build interval model for the provided value type."]
-    )  # add messages that indicate that the invocation is not supported
+    unsupported_messages = [
+        "ERROR (storm-cli.cpp:49): An exception caused Storm to terminate. The message of the exception is: NotSupportedException: Can not build interval model for the provided value type."
+    ]  # add messages that indicate that the invocation is not supported
     inv.not_supported = contains_any_of(log, unsupported_messages)
-    memout_messages = (
-        []
-    )  # add messages that indicate that the invocation is not supported
+    memout_messages = []  # add messages that indicate that the invocation is not supported
     memout_messages.append(
         "An unexpected exception occurred and caused Storm to terminate. The message of this exception is: std::bad_alloc"
     )
@@ -44,7 +41,7 @@ def parse_logfile_storm(log, inv):
     inv.memout = contains_any_of(log, memout_messages)
     known_error_messages = [
         "ERROR (SparseModelFromUmb.cpp:242): Only state observations are currently supported for POMDP models.",
-        "ERROR (ValueEncoding.h:56): Some values are given as double intervals but a model with a non-interval type is requested."
+        "ERROR (ValueEncoding.h:56): Some values are given as double intervals but a model with a non-interval type is requested.",
     ]  # add messages that indicate a "known" error, i.e., something that indicates that no warning should be printed
     inv.anticipated_error = contains_any_of(log, known_error_messages)
     if inv.not_supported or inv.anticipated_error:
@@ -102,9 +99,13 @@ def configure_umbtools():
     with open(path, "rb") as config_file:
         paths = tomllib.load(config_file)
         PrismCLI.default_path = paths["tools"]["prism"]
-        logger.warning(f"Prism is now configured with default location {PrismCLI.default_path}")
+        logger.warning(
+            f"Prism is now configured with default location {PrismCLI.default_path}"
+        )
         StormCLI.default_path = paths["tools"]["storm"]
-        logger.warning(f"Storm is now configured with default location {StormCLI.default_path}")
+        logger.warning(
+            f"Storm is now configured with default location {StormCLI.default_path}"
+        )
 
 
 def check_tools(*args):
@@ -136,7 +137,7 @@ class PrismCLI(UmbTool):
     default_path = "/opt/prism"
     name = "PrismCLI"
 
-    def __init__(self, location=None, extra_args = [], custom_identifier = None):
+    def __init__(self, location=None, extra_args=[], custom_identifier=None):
         """
         Create an instance of a prism cli tool.
 
@@ -151,7 +152,9 @@ class PrismCLI(UmbTool):
 
     @property
     def identifier(self):
-        self._custom_identifier if self._custom_identifier else self.name + "(" + ",".join(self._extra_args) + ")"
+        self._custom_identifier if self._custom_identifier else self.name + "(" + ",".join(
+            self._extra_args
+        ) + ")"
 
     def get_prism_path(self):
         path = pathlib.Path(self.prism_dir_path) / "prism/bin/prism"
@@ -160,10 +163,7 @@ class PrismCLI(UmbTool):
         return path
 
     def get_prism_log_extract_script(self):
-        path = (
-            pathlib.Path(self.prism_dir_path)
-            / "prism/etc/scripts/prism-log-extract"
-        )
+        path = pathlib.Path(self.prism_dir_path) / "prism/etc/scripts/prism-log-extract"
         if not path.exists():
             raise RuntimeError(f"Prism log script not found at {path}")
         return path
@@ -221,7 +221,10 @@ class PrismCLI(UmbTool):
         return reported_result
 
     def prism_file_to_umb(
-        self, prism_file: pathlib.Path, output_file: pathlib.Path, log_file: pathlib.Path
+        self,
+        prism_file: pathlib.Path,
+        output_file: pathlib.Path,
+        log_file: pathlib.Path,
     ):
         return self._call_prism(
             log_file,
@@ -232,7 +235,10 @@ class PrismCLI(UmbTool):
         return self._call_prism(log_file, ["-importmodel", umb_file.as_posix()])
 
     def umb_to_umb(
-        self, input_file: pathlib.Path, output_file: pathlib.Path, log_file: pathlib.Path
+        self,
+        input_file: pathlib.Path,
+        output_file: pathlib.Path,
+        log_file: pathlib.Path,
     ):
         return self._call_prism(
             log_file,
@@ -250,16 +256,19 @@ class PrismCLI(UmbTool):
 
 
 def parse_logfile_prism(log, inv):
-    unsupported_messages = (
-        ["smg", "Error: Explicit engine: Intervals not supported for EXACT.", "Error: Unsupported model type TSG in UMB file."]
-    )  # add messages that indicate that the invocation is not supported
+    unsupported_messages = [
+        "smg",
+        "Error: Explicit engine: Intervals not supported for EXACT.",
+        "Error: Unsupported model type TSG in UMB file.",
+    ]  # add messages that indicate that the invocation is not supported
     inv.not_supported = contains_any_of(log, unsupported_messages)
+
 
 class StormCLI(UmbTool):
     name = "StormCLI"
     default_path = "/opt/storm"
 
-    def __init__(self, location=None, extra_args = [], custom_identifier = None):
+    def __init__(self, location=None, extra_args=[], custom_identifier=None):
         if location is None:
             self._storm_path = __class__.default_path
         else:
@@ -269,7 +278,9 @@ class StormCLI(UmbTool):
 
     @property
     def identifier(self):
-        self._custom_identifier if self._custom_identifier else self.name + "(" + ",".join(self._extra_args) + ")"
+        self._custom_identifier if self._custom_identifier else self.name + "(" + ",".join(
+            self._extra_args
+        ) + ")"
 
     def get_storm_path(self):
         path = pathlib.Path(self._storm_path)
@@ -297,7 +308,10 @@ class StormCLI(UmbTool):
         return reported_result
 
     def prism_file_to_umb(
-        self, prism_file: pathlib.Path, output_file: pathlib.Path, log_file: pathlib.Path
+        self,
+        prism_file: pathlib.Path,
+        output_file: pathlib.Path,
+        log_file: pathlib.Path,
     ):
         # Note that output_file must end with .umb for this to work.
         return self._call_storm(
@@ -318,8 +332,11 @@ class StormCLI(UmbTool):
             args += ["--prop", ";".join(properties)]
         return self._call_storm(log_file, args)
 
-    def umb_to_umb(self,
-        input_file: pathlib.Path, output_file: pathlib.Path, log_file: pathlib.Path
+    def umb_to_umb(
+        self,
+        input_file: pathlib.Path,
+        output_file: pathlib.Path,
+        log_file: pathlib.Path,
     ):
         # Note that output_file must end with .umb for this to work.
         return self._call_storm(
@@ -347,7 +364,10 @@ class UmbPython(UmbTool):
         return True
 
     def umb_to_umb(
-        self, input_file: pathlib.Path, output_file: pathlib.Path, log_file: pathlib.Path
+        self,
+        input_file: pathlib.Path,
+        output_file: pathlib.Path,
+        log_file: pathlib.Path,
     ):
         ats = umbi.io.read_umb(input_file)
         umbi.io.write_umb(ats, output_file)

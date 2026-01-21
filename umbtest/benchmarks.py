@@ -97,7 +97,9 @@ class Tester:
             if result["loader"].not_supported:
                 return result
             if not result["loader"].anticipated_error:
-                raise RuntimeError(f"Unexpected exception during loading by {self._loader.name}")
+                raise RuntimeError(
+                    f"Unexpected exception during loading by {self._loader.name}"
+                )
             else:
                 return result
         if not tmpfile_in_path.exists() or tmpfile_in_path.stat().st_size == 0:
@@ -106,7 +108,9 @@ class Tester:
                 d = deque(f.readlines(), maxlen=3)
             with open(result["loader"].logfile, "r") as f:
                 print(f.read())
-            raise RuntimeError(f"{self._loader.name} did not yield a UMB file (but status=0). Last log lines are {" ".join([d[i].rstrip('\n') for i in range(len(d)) if d[i]])} ")
+            raise RuntimeError(
+                f"{self._loader.name} did not yield a UMB file (but status=0). Last log lines are {" ".join([d[i].rstrip('\n') for i in range(len(d)) if d[i]])} "
+            )
         if self._transformer:
             tmpfile_out = self._tmpumbfile()
             try:
