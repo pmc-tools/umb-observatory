@@ -152,7 +152,7 @@ class PrismCLI(UmbTool):
 
     @property
     def identifier(self):
-        self._custom_identifier if self._custom_identifier else self.name + "(" + ",".join(
+        return self._custom_identifier if self._custom_identifier is not None else self.name + "(" + ",".join(
             self._extra_args
         ) + ")"
 
@@ -278,7 +278,7 @@ class StormCLI(UmbTool):
 
     @property
     def identifier(self):
-        self._custom_identifier if self._custom_identifier else self.name + "(" + ",".join(
+        return self._custom_identifier if self._custom_identifier is not None else self.name + "(" + ",".join(
             self._extra_args
         ) + ")"
 
