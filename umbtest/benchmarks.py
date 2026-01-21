@@ -16,7 +16,7 @@ class UmbBenchmark:
 
     @property
     def id(self) -> Path:
-        return Path("/".join(self.location.parts[-3:]))
+        return Path("/".join(self.location.parts[-2:]))
 
 
 _prism_files_path = Path(__file__).parent / "../resources/prism-files/"
@@ -94,6 +94,8 @@ class Tester:
         if result["loader"].error_code != 0:
             with open(result["loader"].logfile, "r") as f:
                 print(f.read())
+            if result["loader"].not_supported:
+                return result
             if not result["loader"].anticipated_error:
                 raise RuntimeError(f"Unexpected exception during loading by {self._loader.name}")
             else:
@@ -125,9 +127,9 @@ class Tester:
         if result["checker"].error_code != 0:
             with open(result["checker"].logfile, "r") as f:
                 print(f.read())
+            if result["checker"].anticipated_error or result["checker"].not_supported:
+                return result
             if result["checker"].errors is None:
                 raise RuntimeError("Something unexpected went wrong.")
-            errmsg = ";".join(result["checker"].errors)
-            raise RuntimeError(f"Errors reported: {errmsg}.")
 
         return result

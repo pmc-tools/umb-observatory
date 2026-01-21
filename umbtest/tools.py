@@ -8,6 +8,91 @@ import umbi.io
 logger = logging.getLogger(__name__)
 
 
+
+#  LOGFILE Parsing
+# Taken from and adapted from a project by Alex Bork and Tim Quatmann
+def contains_any_of(log, msg):
+    for m in msg:
+        if m in log:
+            return True
+    return False
+
+
+def try_parse(log, start, before, after, out_dict, out_key, out_type):
+    pos1 = log.find(before, start)
+    if pos1 >= 0:
+        pos1 += len(before)
+        pos2 = log.find(after, pos1)
+        if pos2 >= 0:
+            out_dict[out_key] = out_type(log[pos1:pos2])
+            return pos2 + len(after)
+    return start
+
+
+def parse_logfile_storm(log, inv):
+    unsupported_messages = (
+        ["ERROR (storm-cli.cpp:49): An exception caused Storm to terminate. The message of the exception is: NotSupportedException: Can not build interval model for the provided value type."]
+    )  # add messages that indicate that the invocation is not supported
+    inv.not_supported = contains_any_of(log, unsupported_messages)
+    memout_messages = (
+        []
+    )  # add messages that indicate that the invocation is not supported
+    memout_messages.append(
+        "An unexpected exception occurred and caused Storm to terminate. The message of this exception is: std::bad_alloc"
+    )
+    memout_messages.append("Return code:\t-9")
+    inv.memout = contains_any_of(log, memout_messages)
+    known_error_messages = [
+        "ERROR (SparseModelFromUmb.cpp:242): Only state observations are currently supported for POMDP models.",
+        "ERROR (ValueEncoding.h:56): Some values are given as double intervals but a model with a non-interval type is requested."
+    ]  # add messages that indicate a "known" error, i.e., something that indicates that no warning should be printed
+    inv.anticipated_error = contains_any_of(log, known_error_messages)
+    if inv.not_supported or inv.anticipated_error:
+        return
+    if inv.error_code not in [0, 1]:
+        if not inv.timeout and not inv.memout:
+            print("WARN: Unexpected return code(s): {}".format(inv["return-codes"]))
+
+    errors = {}
+    pos = 0
+    i = 0
+    while i <= 30:
+        pos = try_parse(
+            log,
+            pos,
+            "ERROR",
+            "\n",
+            errors,
+            i,
+            str,
+        )
+        if i not in errors:
+            break
+        i = i + 1
+    inv.errors = tuple(errors.values())
+    pos = 0
+    inv.model_info = dict()
+
+    pos = try_parse(
+        log,
+        pos,
+        "Time for model construction: ",
+        "s.",
+        inv.model_info,
+        "model-building-time",
+        float,
+    )
+
+    pos = try_parse(log, pos, "States: \t", "\n", inv.model_info, "states", int)
+    pos = try_parse(
+        log, pos, "Transitions: \t", "\n", inv.model_info, "transitions", int
+    )
+    pos = try_parse(log, pos, "Choices: \t", "\n", inv.model_info, "choices", int)
+    pos = try_parse(
+        log, pos, "Observations: \t", "\n", inv.model_info, "observations", int
+    )
+
+
 class UmbTool:
     pass
 
@@ -51,7 +136,7 @@ class PrismCLI(UmbTool):
     default_path = "/opt/prism"
     name = "PrismCLI"
 
-    def __init__(self, location=None, extra_args = []):
+    def __init__(self, location=None, extra_args = [], custom_identifier = None):
         """
         Create an instance of a prism cli tool.
 
@@ -62,6 +147,11 @@ class PrismCLI(UmbTool):
         else:
             self.prism_dir_path = location
         self._extra_args = extra_args
+        self._custom_identifier = custom_identifier
+
+    @property
+    def identifier(self):
+        self._custom_identifier if self._custom_identifier else self.name + "(" + ",".join(self._extra_args) + ")"
 
     def get_prism_path(self):
         path = pathlib.Path(self.prism_dir_path) / "prism/bin/prism"
@@ -99,7 +189,10 @@ class PrismCLI(UmbTool):
         reported_result.memout = None
         reported_result.error_code = subprocess_result.returncode
         reported_result.logfile = log_file
+        print(log_file)
         if log_file is not None:
+            with open(log_file, "r") as log:
+                parse_logfile_prism(log.read(), reported_result)
             log_subprocess_result = subprocess.run(
                 [
                     self.get_prism_log_extract_script().as_posix(),
@@ -156,15 +249,27 @@ class PrismCLI(UmbTool):
         return result.error_code == 0
 
 
+def parse_logfile_prism(log, inv):
+    unsupported_messages = (
+        ["smg", "Error: Explicit engine: Intervals not supported for EXACT.", "Error: Unsupported model type TSG in UMB file."]
+    )  # add messages that indicate that the invocation is not supported
+    inv.not_supported = contains_any_of(log, unsupported_messages)
+
 class StormCLI(UmbTool):
     name = "StormCLI"
     default_path = "/opt/storm"
 
-    def __init__(self, location=None):
+    def __init__(self, location=None, extra_args = [], custom_identifier = None):
         if location is None:
             self._storm_path = __class__.default_path
         else:
             self._storm_path = location
+        self._extra_args = extra_args
+        self._custom_identifier = custom_identifier
+
+    @property
+    def identifier(self):
+        self._custom_identifier if self._custom_identifier else self.name + "(" + ",".join(self._extra_args) + ")"
 
     def get_storm_path(self):
         path = pathlib.Path(self._storm_path)
@@ -173,7 +278,7 @@ class StormCLI(UmbTool):
         return path
 
     def _call_storm(self, log_file, args):
-        invocation = [self.get_storm_path().as_posix()] + args
+        invocation = [self.get_storm_path().as_posix()] + args + self._extra_args
         logger.info("Storm invocation: " + " ".join(invocation))
         result = subprocess.run(
             invocation,
@@ -186,7 +291,7 @@ class StormCLI(UmbTool):
         reported_result.memout = False
         reported_result.logfile = log_file
         if log_file is not None:
-            parse_logfile(result.stdout, reported_result)
+            parse_logfile_storm(result.stdout, reported_result)
             with open(log_file, "w+") as log:
                 log.write(result.stdout)
         return reported_result
@@ -230,89 +335,6 @@ class StormCLI(UmbTool):
     def check_process(self):
         result = self._call_storm(None, ["--version"])
         return result.error_code == 0
-
-
-# STORM LOGFILE Parsing
-# Taken and adapted from a project by Alex Bork and Tim Quatmann
-def contains_any_of(log, msg):
-    for m in msg:
-        if m in log:
-            return True
-    return False
-
-
-def try_parse(log, start, before, after, out_dict, out_key, out_type):
-    pos1 = log.find(before, start)
-    if pos1 >= 0:
-        pos1 += len(before)
-        pos2 = log.find(after, pos1)
-        if pos2 >= 0:
-            out_dict[out_key] = out_type(log[pos1:pos2])
-            return pos2 + len(after)
-    return start
-
-
-def parse_logfile(log, inv):
-    unsupported_messages = (
-        []
-    )  # add messages that indicate that the invocation is not supported
-    inv.not_supported = contains_any_of(log, unsupported_messages)
-    memout_messages = (
-        []
-    )  # add messages that indicate that the invocation is not supported
-    memout_messages.append(
-        "An unexpected exception occurred and caused Storm to terminate. The message of this exception is: std::bad_alloc"
-    )
-    memout_messages.append("Return code:\t-9")
-    inv.memout = contains_any_of(log, memout_messages)
-    known_error_messages = [
-        "Program still contains these undefined constants"
-    ]  # add messages that indicate a "known" error, i.e., something that indicates that no warning should be printed
-    inv.anticipated_error = contains_any_of(log, known_error_messages)
-    if inv.not_supported or inv.anticipated_error:
-        return
-    if inv.error_code not in [0, 1]:
-        if not inv.timeout and not inv.memout:
-            print("WARN: Unexpected return code(s): {}".format(inv["return-codes"]))
-
-    errors = {}
-    pos = 0
-    i = 0
-    while i <= 30:
-        pos = try_parse(
-            log,
-            pos,
-            "ERROR",
-            "\n",
-            errors,
-            i,
-            str,
-        )
-        if i not in errors:
-            break
-        i = i + 1
-    inv.errors = tuple(errors.values())
-    pos = 0
-    inv.model_info = dict()
-
-    pos = try_parse(
-        log,
-        pos,
-        "Time for model construction: ",
-        "s.",
-        inv.model_info,
-        "model-building-time",
-        float,
-    )
-
-    pos = try_parse(log, pos, "States: \t", "\n", inv.model_info, "states", int)
-    pos = try_parse(
-        log, pos, "Transitions: \t", "\n", inv.model_info, "transitions", int
-    )
-    pos = try_parse(log, pos, "Choices: \t", "\n", inv.model_info, "choices", int)
-    pos = try_parse(
-        log, pos, "Observations: \t", "\n", inv.model_info, "observations", int
-    )
 
 
 class UmbPython(UmbTool):

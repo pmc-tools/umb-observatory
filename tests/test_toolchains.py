@@ -8,9 +8,10 @@ We initialize the tools we use in the tests.
 This can also be used to override the standard paths loaded by the configure tools call.
 """
 umbtest.tools.configure_umbtools()
-storm_cli = umbtest.tools.StormCLI()
-prism_cli = umbtest.tools.PrismCLI()
-prism_cli_exact = umbtest.tools.PrismCLI(extra_args = ["-exact"])
+storm_cli = umbtest.tools.StormCLI(custom_identifier="Storm")
+storm_cli_exact = umbtest.tools.StormCLI(extra_args = ["--exact"], custom_identifier="Storm (exact)")
+prism_cli = umbtest.tools.PrismCLI(custom_identifier="Prism")
+prism_cli_exact = umbtest.tools.PrismCLI(extra_args = ["-exact"], custom_identifier="Prism (exact)")
 umbi_py = umbtest.tools.UmbPython()
 check_tools(prism_cli, storm_cli)
 
@@ -21,7 +22,10 @@ def _toolname(val: umbtest.tools.UmbTool) -> str:
     :param val:
     :return:
     """
-    return str(val.name)
+    return str(val.identifier)
+
+def _toolpair(val: tuple[umbtest.tools.UmbTool, umbtest.tools.UmbTool]) -> str:
+    return str(val[0].identifier)+"->"+str(val[1].identifier)
 
 def _testername(val: Tester) -> str:
     """
@@ -52,10 +56,14 @@ def load_and_read(tester, benchmark):
     results = tester.check_benchmark(benchmark)
     if results["loader"].anticipated_error:
         pytest.skip("Loader failed with an anticipated error")
-    assert results["loader"].error_code == 0
+    if results["loader"].not_supported:
+        pytest.skip("Checker does not support these files.")
+    assert results["loader"].error_code == 0, "Loader should not crash."
     if results["checker"].anticipated_error:
-        pytest.skip("Checker failed with an anticipated error")
-    assert results["checker"].error_code == 0
+        pytest.xfail("Checker failed with an anticipated error.")
+    if results["checker"].not_supported:
+        pytest.skip("Checker does not support these files.")
+    assert results["checker"].error_code == 0, "Checker should not crash."
     assert (
         results["loader"].model_info["states"]
         == results["checker"].model_info["states"]
@@ -85,7 +93,9 @@ class TestTool:
         load_and_read(tester, benchmark)
 
 
-toolpairs = [(storm_cli, prism_cli), (prism_cli, storm_cli), (prism_cli_exact, storm_cli)]
+toolpairs = [(storm_cli, prism_cli), (prism_cli, storm_cli),
+             (prism_cli_exact, storm_cli_exact), (storm_cli_exact, prism_cli_exact)]
+@pytest.mark.parametrize("toolpair", toolpairs, ids=_toolpair, scope="class")
 class TestAlignment:
     @pytest.mark.parametrize(
         "benchmark", umbtest.benchmarks.prism_files, ids=_benchmarkname
