@@ -382,12 +382,12 @@ class UmbPython(UmbTool):
             }
             return reported_results
         elif self._mode == "umb":
-            ats = umbi.io.read_umb(input_file)
-            umbi.io.write_umb(ats, output_file)
+            umb = umbi.io.read_umb(input_file)
+            umbi.io.write_umb(umb, output_file)
             reported_results = ReportedResults()
             reported_results.model_info = {
-                "states": ats.num_states,
-                "transitions": ats.num_branches,
+                "states": umb.index.transition_system.num_states,
+                "transitions": umb.index.transition_system.num_branches,
             }
             return reported_results
         else:

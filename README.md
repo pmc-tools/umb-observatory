@@ -20,12 +20,12 @@ On the container, you find
 You can build the docker container yourself or obtain it by:
 
 ```
-docker pull ghcr.io/pmc-tools/docker:main
+docker pull ghcr.io/pmc-tools/umb-observatory:main
 ```
 
 Then, to start it, we recommend:
 ```
-docker run --name pmcdocker -d -p 8000:8000 ghcr.io/pmc-tools/docker:main 
+docker run --name pmcdocker -d -p 8000:8000 ghcr.io/pmc-tools/umb-observatory:main
 ```
 
 The exposed port helps you connect to the notebooks. If port 8000 is already occupied locally,
