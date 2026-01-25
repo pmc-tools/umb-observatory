@@ -357,8 +357,11 @@ class StormCLI(UmbTool):
 class UmbPython(UmbTool):
     name = "umbilib"
 
-    def __init__(self):
-        pass
+    def __init__(self, mode="umb"):
+        """
+        :param mode: Either ats or umb
+        """
+        self._mode = mode
 
     def check_process(self):
         return True
@@ -369,11 +372,23 @@ class UmbPython(UmbTool):
         output_file: pathlib.Path,
         log_file: pathlib.Path,
     ):
-        ats = umbi.io.read_umb(input_file)
-        umbi.io.write_umb(ats, output_file)
-        reported_results = ReportedResults()
-        reported_results.model_info = {
-            "states": ats.num_states,
-            "transitions": ats.num_branches,
-        }
-        return reported_results
+        if self._mode == "ats":
+            ats = umbi.io.read_ats(input_file)
+            umbi.io.write_ats(ats, output_file)
+            reported_results = ReportedResults()
+            reported_results.model_info = {
+                "states": ats.num_states,
+                "transitions": ats.num_branches,
+            }
+            return reported_results
+        elif self._mode == "umb":
+            ats = umbi.io.read_umb(input_file)
+            umbi.io.write_umb(ats, output_file)
+            reported_results = ReportedResults()
+            reported_results.model_info = {
+                "states": ats.num_states,
+                "transitions": ats.num_branches,
+            }
+            return reported_results
+        else:
+            raise RuntimeError("Unknown mode")

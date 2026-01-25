@@ -12,7 +12,8 @@ storm_cli = umbtest.tools.StormCLI(custom_identifier="Storm")
 storm_cli_exact = umbtest.tools.StormCLI(extra_args = ["--exact"], custom_identifier="Storm (exact)")
 prism_cli = umbtest.tools.PrismCLI(custom_identifier="Prism")
 prism_cli_exact = umbtest.tools.PrismCLI(extra_args = ["-exact"], custom_identifier="Prism (exact)")
-umbi_py = umbtest.tools.UmbPython()
+umbi_py_umb = umbtest.tools.UmbPython("umb")
+umbi_py_ats = umbtest.tools.UmbPython("ats")
 check_tools(prism_cli, storm_cli)
 
 
@@ -73,7 +74,7 @@ def load_and_read(tester, benchmark):
         == results["checker"].model_info["transitions"]
     )
 
-tools = [storm_cli, prism_cli, prism_cli_exact]
+tools = [storm_cli, prism_cli, prism_cli_exact, storm_cli_exact]
 @pytest.mark.parametrize("tool", tools, ids=_toolname, scope="class")
 class TestTool:
     @pytest.mark.parametrize(
@@ -89,7 +90,16 @@ class TestTool:
     )
     def test_write_umbi_read(self, tool, benchmark):
         tester = Tester()
-        tester.set_chain(loader=tool, transformer=umbi_py, checker=tool)
+        tester.set_chain(loader=tool, transformer=umbi_py_umb, checker=tool)
+        load_and_read(tester, benchmark)
+
+    @pytest.mark.parametrize(
+        "benchmark", umbtest.benchmarks.prism_files, ids=_benchmarkname
+    )
+    @pytest.mark.skipif(True, reason="Not implemented yet.")
+    def test_write_umbi_ats_read(self, tool, benchmark):
+        tester = Tester()
+        tester.set_chain(loader=tool, transformer=umbi_py_ats, checker=tool)
         load_and_read(tester, benchmark)
 
 
