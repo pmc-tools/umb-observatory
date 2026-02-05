@@ -3,3 +3,8 @@
 storm = "/Users/junges/storm-umb/build/bin/storm"
 # For prism, we ask the location of the directory.
 prism = "/Users/junges/prism-umb/"
+modest = "/Users/junges/Documents/Modest-umb-all/Modest/modest"
+
+["byproducts"]
+tmpfolder = "/tmp"
+cleanup = 1

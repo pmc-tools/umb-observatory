@@ -106,6 +106,10 @@ def configure_umbtools():
         logger.warning(
             f"Storm is now configured with default location {StormCLI.default_path}"
         )
+        ModestCLI.default_path = paths["tools"]["modest"]
+        logger.warning(
+            f"Modest is now configured with default location {ModestCLI.default_path}"
+        )
 
 
 def check_tools(*args):
@@ -125,13 +129,12 @@ class ReportedResults:
             False  # Can be used to declare an error message that "makes sense"
         )
         self.errors = tuple()
-        self.error_code = None
+        self.exit_code = None
         self.model_info = None
         self.logfile = None
 
     def __str__(self):
-        return f"ReportedResults[{self.logfile},{self.error_code},{self.model_info},{self.timeout},{self.memout}]"
-
+        return f"ReportedResults[{self.logfile},{self.exit_code},{self.model_info},{self.timeout},{self.memout}]"
 
 class PrismCLI(UmbTool):
     default_path = "/opt/prism"
@@ -187,7 +190,7 @@ class PrismCLI(UmbTool):
         reported_result = ReportedResults()
         reported_result.timeout = None
         reported_result.memout = None
-        reported_result.error_code = subprocess_result.returncode
+        reported_result.exit_code = subprocess_result.returncode
         reported_result.logfile = log_file
         print(log_file)
         if log_file is not None:
@@ -252,7 +255,7 @@ class PrismCLI(UmbTool):
 
     def check_process(self):
         result = self._call_prism(None, ["-version"])
-        return result.error_code == 0
+        return result.exit_code == 0
 
 
 def parse_logfile_prism(log, inv):
@@ -262,6 +265,93 @@ def parse_logfile_prism(log, inv):
         "Error: Unsupported model type TSG in UMB file.",
     ]  # add messages that indicate that the invocation is not supported
     inv.not_supported = contains_any_of(log, unsupported_messages)
+
+
+class ModestCLI(UmbTool):
+    name = "ModestCLI"
+    default_path = "/opt/modest"
+    empty_properties_file = (pathlib.Path(__file__).parent.parent) / "resources" / "empty.properties.txt"
+
+    def __init__(self, location=None, extra_args=[], custom_identifier=None):
+        if location is None:
+            self._modest_path = __class__.default_path
+        else:
+            self._modest_path = location
+        self._extra_args = extra_args
+        self._custom_identifier = custom_identifier
+
+
+
+    @property
+    def identifier(self):
+        return self._custom_identifier if self._custom_identifier is not None else self.name + "(" + ",".join(
+            self._extra_args
+        ) + ")"
+
+    def get_modest_path(self):
+        path = pathlib.Path(self._modest_path)
+        if not path.exists():
+            raise RuntimeError(f"Modest executable not found at {path}")
+        return path
+
+    def _call_mcsta(self, log_file, args):
+        invocation = [self.get_modest_path().as_posix(), "mcsta", "-Y"] + args + self._extra_args
+        # if log_file is not None:
+        #     invocation = invocation +["-O", log_file.as_posix()]
+        # else:
+        #     print("WTF")
+        print(" ".join(invocation))
+        result = subprocess.run(
+            invocation,
+            capture_output=True,
+            text=True,
+        )
+        reported_result = ReportedResults()
+        reported_result.exit_code = result.returncode
+        reported_result.timeout = False
+        reported_result.memout = False
+        reported_result.logfile = log_file
+        if log_file is not None:
+            print(log_file)
+            with open(log_file, "r") as log:
+                print(log.read())
+                for line in result.stdout.split("\n"):
+                    print(line)
+                    if "error:" in line:
+                        reported_result.exit_code = 1
+        return reported_result
+
+    def check_umb(self, umb_file: pathlib.Path, log_file: pathlib.Path, properties=[]):
+        args = [umb_file.as_posix(), __class__.empty_properties_file.as_posix(), "-I", "UMB", "--exhaustive", "-D"]
+        if properties is not None and len(properties) > 0:
+            raise NotImplementedError("The use of properties is not implemented yet.")
+        return self._call_mcsta(log_file, args)
+
+    def umb_to_umb(
+        self,
+        input_file: pathlib.Path,
+        output_file: pathlib.Path,
+        log_file: pathlib.Path
+    ):
+        assert log_file is not None
+        print(log_file)
+        # Note that output_file must end with .umb for this to work.
+        return self._call_mcsta(
+            log_file=log_file,
+            args=[
+                input_file.as_posix(),
+                __class__.empty_properties_file.as_posix(),
+                "-I", "UMB",
+                "--umb",
+                output_file.as_posix(),
+                "-D",
+                "--exhaustive"
+            ],
+        )
+
+    def check_process(self):
+        result = self._call_mcsta(None, ["--version"])
+        return result.exit_code == 0
 
 
 class StormCLI(UmbTool):
@@ -297,7 +387,7 @@ class StormCLI(UmbTool):
             text=True,
         )
         reported_result = ReportedResults()
-        reported_result.error_code = result.returncode
+        reported_result.exit_code = result.returncode
         reported_result.timeout = False
         reported_result.memout = False
         reported_result.logfile = log_file
@@ -336,7 +426,7 @@ class StormCLI(UmbTool):
         self,
         input_file: pathlib.Path,
         output_file: pathlib.Path,
-        log_file: pathlib.Path,
+        log_file: pathlib.Path
     ):
         # Note that output_file must end with .umb for this to work.
         return self._call_storm(
@@ -351,7 +441,7 @@ class StormCLI(UmbTool):
 
     def check_process(self):
         result = self._call_storm(None, ["--version"])
-        return result.error_code == 0
+        return result.exit_code == 0
 
 
 class UmbPython(UmbTool):
@@ -370,7 +460,7 @@ class UmbPython(UmbTool):
         self,
         input_file: pathlib.Path,
         output_file: pathlib.Path,
-        log_file: pathlib.Path,
+        log_file: pathlib.Path
     ):
         if self._mode == "ats":
             ats = umbi.io.read_ats(input_file)

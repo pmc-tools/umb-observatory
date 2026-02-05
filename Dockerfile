@@ -1,32 +1,33 @@
-# Dockerfile for Storm
-######################
-# The Docker image can be built by executing:
-# docker build -t yourusername/storm .
-# A different base image can be set from the commandline with:
-# --build-arg BASE_IMAGE=<new_base_image>
-# Dockerfile installing all dependencies for Storm
-##################################################
-# The Docker image can be built by executing:
-# docker build -t yourusername/storm-dependencies .
-# A different base image can be set from the commandline with:
-# --build-arg BASE_IMAGE=<new_base_image>
+# Dockerfile for UMB Obervatory
+# Based on the Storm docker files.
 
 # Set base image
+# We use the storm depencies as a basis as it already includes various necessary packages.
 ARG BASE_IMAGE=movesrwth/storm-dependencies:latest
-ARG TARGETPLATFORM
+
 
 ######################################################################
 # The final JupyterHub image, platform specific
-FROM $BASE_IMAGE AS umbihub
-LABEL org.opencontainers.image.authors="dev@stormchecker.org"
+FROM $BASE_IMAGE AS umbiobservatory
+LABEL org.opencontainers.image.authors="pmctools"
 
+ARG TARGETPLATFORM
 EXPOSE 8000
 
+# Install dependencies
+# For storm: libarchive-dev and ninja-build
+# For prism: default-jdk
+# For mdoest xz-utils
 RUN apt-get update -qq \
  && apt-get install -yqq --no-install-recommends \
     python-is-python3 \
     python3-pip \
-    python3-venv
+    python3-venv \
+    unzip  \
+ && apt-get install -yqq --no-install-recommends \
+    libarchive-dev ninja-build libboost-iostreams-dev \
+    default-jdk  \
+    xz-utils
 
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
@@ -39,24 +40,20 @@ RUN python3 -m pip install  --no-cache-dir  jupyter matplotlib scipy pytest blac
 ARG storm_build_type=Release
 # Specify number of threads to use for parallel compilation
 ARG no_threads=1
-#
-# For storm: libarchive-dev and ninja-build
-# For prism: default-jdk
-RUN apt-get update -qq \
- && apt-get install -yqq --no-install-recommends \
-    libarchive-dev ninja-build libboost-iostreams-dev \
-    default-jdk
+ARG storm_repo=https://github.com/tquatmann/storm.git
+ARG storm_branch=io/binaryformat
+ARG prism_repo=https://github.com/davexparker/prism.git
+ARG prism_branch=umb
 
 # Build Storm
 #############
 WORKDIR /opt/
 
-RUN git clone  -b io/binaryformat https://github.com/tquatmann/storm.git
+RUN git clone  -b $storm_branch $storm_repo
 
 # Switch to build directory
 RUN mkdir -p /opt/storm/build
 WORKDIR /opt/storm/build
-
 # Configure Storm
 RUN cmake -GNinja -DCMAKE_BUILD_TYPE=$storm_build_type \
           -DSTORM_PORTABLE=ON \
@@ -64,11 +61,18 @@ RUN cmake -GNinja -DCMAKE_BUILD_TYPE=$storm_build_type \
           ..
 RUN ninja storm-cli -j 4
 
+# Build Prism
+#############
 WORKDIR /opt/
-
-RUN git clone -b umb https://github.com/davexparker/prism.git
+RUN git clone -b $prism_branch $prism_repo
 WORKDIR /opt/prism/prism
 RUN make
+
+# Download Modest
+#################
+WORKDIR /opt/
+COPY .docker/install-modest.sh install-modest.sh
+RUN bash install-modest.sh
 
 #### Install UMB
 RUN python3 -m pip install --no-cache-dir  umbi

@@ -3,7 +3,11 @@ from typing import List
 from umbtest.tools import UmbTool, ReportedResults, PrismCLI
 from pathlib import Path
 from collections import deque
+import tomllib
+import pathlib
+import logging
 
+logger = logging.getLogger(__name__)
 
 class UmbBenchmark:
     def __init__(self, location: Path, properties=None, is_prism_file=True):
@@ -21,7 +25,6 @@ class UmbBenchmark:
 
 _prism_files_path = Path(__file__).parent / "../resources/prism-files/"
 prism_files = [UmbBenchmark(p) for p in _prism_files_path.glob("*.nm")]
-few_files = prism_files[5:]
 
 standard = [
     UmbBenchmark(
@@ -29,20 +32,31 @@ standard = [
     )
 ]
 
-
 class Tester:
-    def __init__(self, id=None):
-        self._tmpdir = tempfile.TemporaryDirectory()
+    testdir = tempfile.TemporaryDirectory()
+    delete_files_default = True
+
+    def __init__(self, id=None, delete_files=None):
+        self._tmpdir = __class__.testdir
         self._loader = None
         self._checker = None
         self._transformer = None
         self._id = id
+        if delete_files is None:
+            self._delete_files = __class__.delete_files_default
+        else:
+            self._delete_files = delete_files
+
+    def _get_tmp_dir_name(self):
+        if isinstance(self._tmpdir, str):
+            return self._tmpdir
+        return self._tmpdir.name
 
     def _tmpumbfile(self):
-        return tempfile.NamedTemporaryFile(dir=self._tmpdir.name, suffix=".umb")
+        return tempfile.NamedTemporaryFile(dir=self._get_tmp_dir_name(), suffix=".umb", delete=self._delete_files, delete_on_close=self._delete_files)
 
     def _tmplogfile(self):
-        return tempfile.NamedTemporaryFile(dir=self._tmpdir.name, suffix=".log")
+        return tempfile.NamedTemporaryFile(dir=self._get_tmp_dir_name(), suffix=".log", delete=self._delete_files, delete_on_close=self._delete_files)
 
     def set_chain(
         self, loader: UmbTool, checker: UmbTool, transformer: None | UmbTool = None
@@ -119,6 +133,8 @@ class Tester:
                     Path(tmpfile_out.name),
                     log_file=Path(self._tmplogfile().name),
                 )
+                if result["transformer"].error_code != 0:
+                    return result
             except Exception as e:
                 raise RuntimeError(f"{self._transformer.name} raised {type(e)}:{e}!")
         else:
@@ -137,3 +153,22 @@ class Tester:
                 raise RuntimeError("Something unexpected went wrong.")
 
         return result
+
+
+def configure_tester():
+    path = str(pathlib.Path(__file__).parent.parent / "tools.toml")
+    with open(path, "rb") as config_file:
+        paths = tomllib.load(config_file)
+        if "byproducts" in paths:
+            if "tmpfolder" in paths["byproducts"]:
+                Tester.testdir = paths["byproducts"]["tmpfolder"]
+                logger.warning(
+                    f"Temporary files are now stored at {Tester.testdir}"
+                )
+            if "cleanup" in paths["byproducts"]:
+                Tester.delete_files_default = paths["byproducts"]["cleanup"]
+                logger.warning(
+                    f"Temporary files cleanup is set to {Tester.delete_files_default}"
+                )
+
+configure_tester()
