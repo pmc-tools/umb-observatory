@@ -1,9 +1,10 @@
 ["tools"]
 # Note that for storm, we ask for the path to the binary
-storm = "/Users/junges/storm-umb/build/bin/storm"
+storm = "/path/to/storm/binary/storm"
 # For prism, we ask the location of the directory.
-prism = "/Users/junges/prism-umb/"
-modest = "/Users/junges/Documents/Modest-umb-all/Modest/modest"
+prism = "/path/to/prism/directory"
+# For modest, we ask for the path to the binary
+modest = "/path/to/modest/binary/modest"
 
 ["byproducts"]
 tmpfolder = "/tmp"

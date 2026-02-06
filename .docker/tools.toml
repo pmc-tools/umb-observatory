@@ -3,7 +3,8 @@
 storm = "/opt/storm/build/bin/storm"
 # For prism, we ask the location of the directory.
 prism = "/opt/prism/"
-modest = "/opt/Modest/"
+# For modest, we ask for the path to the binary
+modest = "/opt/Modest/modest"
 
 ["byproducts"]
 tmpfolder = "/tmp"
