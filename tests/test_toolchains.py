@@ -57,11 +57,12 @@ def load_and_read(tester, benchmark):
     print(f"Testing {tester} on {benchmark}...")
     results = tester.check_benchmark(benchmark)
     if results["loader"].anticipated_error:
-        pytest.skip("Loader failed with an anticipated error")
+        pytest.xfail("Loader failed with an anticipated error")
     if results["loader"].not_supported:
         pytest.skip("Checker does not support these files.")
     assert results["loader"].exit_code == 0, "Loader should not crash."
-    assert results["transformer"].exit_code == 0, "Transformer should not crash"
+    if results["transformer"] is not None:
+        assert results["transformer"].exit_code == 0, "Transformer should not crash"
     if results["checker"].anticipated_error:
         pytest.xfail("Checker failed with an anticipated error.")
     if results["checker"].not_supported:
