@@ -192,7 +192,6 @@ class PrismCLI(UmbTool):
         reported_result.memout = None
         reported_result.exit_code = subprocess_result.returncode
         reported_result.logfile = log_file
-        print(log_file)
         if log_file is not None:
             with open(log_file, "r") as log:
                 parse_logfile_prism(log.read(), reported_result)
@@ -210,15 +209,15 @@ class PrismCLI(UmbTool):
                     "Issues parsing logfile:  " + log_subprocess_result.stderr
                 )
             if log_subprocess_result.returncode != 0:
-                logger.warning("Issues parsing logfile yielded error code")
-            data = log_subprocess_result.stdout.split("\n")[1].split(",")
+                logger.warning(f"Issues parsing logfile yielded error code {log_subprocess_result.returncode}.")
             try:
+                data = log_subprocess_result.stdout.split("\n")[1].split(",")
                 reported_result.model_info = {
                     "states": int(data[1]),
                     "transitions": int(data[2]),
                 }
-            except ValueError:
-                logger.warning(f"Issues parsing the model info data {data}")
+            except Exception as e:
+                logger.warning(f"Issues parsing the model info data {data}. Got exception: {e}")
                 reported_result.model_info = {}
 
         return reported_result
