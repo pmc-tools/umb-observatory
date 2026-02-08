@@ -46,7 +46,7 @@ def parse_logfile_storm(log, inv):
     inv.anticipated_error = contains_any_of(log, known_error_messages)
     if inv.not_supported or inv.anticipated_error:
         return
-    if inv.error_code not in [0, 1]:
+    if inv.exit_code not in [0, 1]:
         if not inv.timeout and not inv.memout:
             print("WARN: Unexpected return code(s): {}".format(inv["return-codes"]))
 
@@ -312,13 +312,14 @@ class ModestCLI(UmbTool):
         reported_result.memout = False
         reported_result.logfile = log_file
         if log_file is not None:
-            print(log_file)
             with open(log_file, "r") as log:
                 print(log.read())
                 for line in result.stdout.split("\n"):
                     print(line)
                     if "error:" in line:
                         reported_result.exit_code = 1
+                    if "UMB: error: Only deadlock-free MA, MDP, CTMC, DTMC, and LTS models are supported." in line:
+                        reported_result.not_supported = True
         return reported_result
 
     def check_umb(self, umb_file: pathlib.Path, log_file: pathlib.Path, properties=[]):

@@ -42,8 +42,8 @@ ARG storm_build_type=Release
 ARG no_threads=1
 ARG storm_repo=https://github.com/tquatmann/storm.git
 ARG storm_branch=io/binaryformat
-ARG prism_repo=https://github.com/davexparker/prism.git
-ARG prism_branch=umb
+ARG prism_repo=https://github.com/prismmodelchecker/prism.git
+ARG prism_branch=master
 
 # Build Storm
 #############

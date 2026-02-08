@@ -105,7 +105,7 @@ class Tester:
         )
         result["checker"] = None
         result["transformer"] = None
-        if result["loader"].error_code != 0:
+        if result["loader"].exit_code != 0:
             with open(result["loader"].logfile, "r") as f:
                 print(f.read())
             if result["loader"].not_supported:
@@ -133,7 +133,7 @@ class Tester:
                     Path(tmpfile_out.name),
                     log_file=Path(self._tmplogfile().name),
                 )
-                if result["transformer"].error_code != 0:
+                if result["transformer"].exit_code != 0:
                     return result
             except Exception as e:
                 raise RuntimeError(f"{self._transformer.name} raised {type(e)}:{e}!")
@@ -144,7 +144,7 @@ class Tester:
             log_file=Path(self._tmplogfile().name),
             properties=properties,
         )
-        if result["checker"].error_code != 0:
+        if result["checker"].exit_code != 0:
             with open(result["checker"].logfile, "r") as f:
                 print(f.read())
             if result["checker"].anticipated_error or result["checker"].not_supported:
