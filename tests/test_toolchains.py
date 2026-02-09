@@ -61,6 +61,10 @@ def load_and_read(tester, benchmark):
     if results["loader"].not_supported:
         pytest.skip("Checker does not support these files.")
     assert results["loader"].exit_code == 0, "Loader should not crash."
+    if results["transformer"].anticipated_error:
+        pytest.xfail("Transformer failed with an anticipated error")
+    if results["transformer"].not_supported:
+        pytest.skip("Transformer does not support these files.")
     if results["transformer"] is not None:
         assert results["transformer"].exit_code == 0, "Transformer should not crash"
     if results["checker"].anticipated_error:

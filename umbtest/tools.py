@@ -42,13 +42,14 @@ def parse_logfile_storm(log, inv):
     known_error_messages = [
         "ERROR (SparseModelFromUmb.cpp:242): Only state observations are currently supported for POMDP models.",
         "ERROR (ValueEncoding.h:56): Some values are given as double intervals but a model with a non-interval type is requested.",
-    ]  # add messages that indicate a "known" error, i.e., something that indicates that no warning should be printed
+    ]  # add messages that indicate a "known" error, i.e., something that indicates that this is a reported issue.
     inv.anticipated_error = contains_any_of(log, known_error_messages)
     if inv.not_supported or inv.anticipated_error:
         return
     if inv.exit_code not in [0, 1]:
         if not inv.timeout and not inv.memout:
-            print("WARN: Unexpected return code(s): {}".format(inv["return-codes"]))
+            print(f"WARN: Unexpected return code(s): {inv.exit_code}")
+        return
 
     errors = {}
     pos = 0
@@ -295,10 +296,6 @@ class ModestCLI(UmbTool):
 
     def _call_mcsta(self, log_file, args):
         invocation = [self.get_modest_path().as_posix(), "mcsta", "-Y"] + args + self._extra_args
-        # if log_file is not None:
-        #     invocation = invocation +["-O", log_file.as_posix()]
-        # else:
-        #     print("WTF")
         print(" ".join(invocation))
         result = subprocess.run(
             invocation,
@@ -311,14 +308,14 @@ class ModestCLI(UmbTool):
         reported_result.memout = False
         reported_result.logfile = log_file
         if log_file is not None:
-            with open(log_file, "r") as log:
-                print(log.read())
-                for line in result.stdout.split("\n"):
-                    print(line)
-                    if "error:" in line:
-                        reported_result.exit_code = 1
-                    if "UMB: error: Only deadlock-free MA, MDP, CTMC, DTMC, and LTS models are supported." in line:
-                        reported_result.not_supported = True
+            with open(log_file, "w+") as log:
+                log.write(result.stdout)
+                if "error:" in result.stdout:
+                    reported_result.exit_code = 1
+                if "UMB: error: Only deadlock-free MA, MDP, CTMC, DTMC, and LTS models are supported." in result.stdout:
+                    reported_result.not_supported = True
+                if "UMB: error: Models where state 0 is not the initial state are not supported" in result.stdout:
+                    reported_result.anticipated_error = True
         return reported_result
 
     def check_umb(self, umb_file: pathlib.Path, log_file: pathlib.Path, properties=[]):
