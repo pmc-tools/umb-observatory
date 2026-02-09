@@ -466,6 +466,7 @@ class UmbPython(UmbTool):
             ats = umbi.io.read_ats(input_file)
             umbi.io.write_ats(ats, output_file)
             reported_results = ReportedResults()
+            reported_results.exit_code = 0
             reported_results.model_info = {
                 "states": ats.num_states,
                 "transitions": ats.num_branches,
@@ -475,6 +476,7 @@ class UmbPython(UmbTool):
             umb = umbi.io.read_umb(input_file)
             umbi.io.write_umb(umb, output_file)
             reported_results = ReportedResults()
+            reported_results.exit_code = 0
             reported_results.model_info = {
                 "states": umb.index.transition_system.num_states,
                 "transitions": umb.index.transition_system.num_branches,
