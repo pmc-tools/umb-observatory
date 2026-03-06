@@ -95,7 +95,7 @@ class TestTool:
     @pytest.mark.parametrize(
         "benchmark", umbtest.benchmarks.prism_files, ids=_benchmarkname
     )
-    def test_write_umbi_read(self, tool, benchmark):
+    def test_write_umbi_umb_read(self, tool, benchmark):
         tester = Tester()
         tester.set_chain(loader=tool, transformer=umbi_py_umb, checker=tool)
         load_and_read(tester, benchmark)
@@ -103,7 +103,6 @@ class TestTool:
     @pytest.mark.parametrize(
         "benchmark", umbtest.benchmarks.prism_files, ids=_benchmarkname
     )
-    @pytest.mark.skipif(True, reason="Not implemented yet.")
     def test_write_umbi_ats_read(self, tool, benchmark):
         tester = Tester()
         tester.set_chain(loader=tool, transformer=umbi_py_ats, checker=tool)

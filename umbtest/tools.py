@@ -3,7 +3,6 @@ import pathlib
 import tomllib
 import logging
 import umbi
-import umbi.io
 
 logger = logging.getLogger(__name__)
 
