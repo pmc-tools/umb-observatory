@@ -40,8 +40,8 @@ RUN python3 -m pip install  --no-cache-dir  jupyter matplotlib scipy pytest blac
 ARG storm_build_type=Release
 # Specify number of threads to use for parallel compilation
 ARG no_threads=1
-ARG storm_repo=https://github.com/tquatmann/storm.git
-ARG storm_branch=io/binaryformat
+ARG storm_repo=https://github.com/moves-rwth/storm.git
+ARG storm_branch=master
 ARG prism_repo=https://github.com/davexparker/prism.git
 ARG prism_branch=umb
 
