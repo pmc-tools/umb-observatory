@@ -459,8 +459,8 @@ class UmbPython(UmbTool):
         log_file: pathlib.Path
     ):
         if self._mode == "ats":
-            ats = umbi.io.read_ats(input_file)
-            umbi.io.write_ats(ats, output_file)
+            ats = umbi.ats.read(input_file)
+            umbi.ats.write(ats, output_file)
             reported_results = ReportedResults()
             reported_results.exit_code = 0
             reported_results.model_info = {
@@ -469,8 +469,8 @@ class UmbPython(UmbTool):
             }
             return reported_results
         elif self._mode == "umb":
-            umb = umbi.io.read_umb(input_file)
-            umbi.io.write_umb(umb, output_file)
+            umb = umbi.umb.read(input_file)
+            umbi.umb.write(umb, output_file)
             reported_results = ReportedResults()
             reported_results.exit_code = 0
             reported_results.model_info = {
