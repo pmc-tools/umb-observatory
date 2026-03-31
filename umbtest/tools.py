@@ -459,7 +459,7 @@ class UmbPython(UmbTool):
         log_file: pathlib.Path
     ):
         if self._mode == "ats":
-            ats = umbi.ats.read(input_file)
+            ats = umbi.ats.read(input_file, strict=True)
             umbi.ats.write(ats, output_file)
             reported_results = ReportedResults()
             reported_results.exit_code = 0
@@ -469,7 +469,7 @@ class UmbPython(UmbTool):
             }
             return reported_results
         elif self._mode == "umb":
-            umb = umbi.umb.read(input_file)
+            umb = umbi.umb.read(input_file, strict=True)
             umbi.umb.write(umb, output_file)
             reported_results = ReportedResults()
             reported_results.exit_code = 0
