@@ -408,6 +408,8 @@ class ModestCLI(UmbTool):
                     reported_result.not_supported = True
                 if "UMB: error: Models where state 0 is not the initial state are not supported" in result.stdout:
                     reported_result.known_issue = "Modest: models where state 0 is not the initial state are not supported"
+                if "UMB: error: Exit rate out of range" in result.stdout:
+                    reported_result.known_issue = "Modest: exit rate out of range (e.g. exit rate 0 of an absorbing state)"
                 if "UMB: error: Found non-standard file" in result.stdout:
                     reported_result.known_issue = "Modest: found non-standard UMB file"
         return reported_result

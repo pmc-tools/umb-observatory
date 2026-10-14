@@ -19,7 +19,9 @@ ARG SOURCE_BASE_IMAGE=movesrwth/storm-dependencies:latest
 ######################################################################
 # Flavor "fast": Storm is a prebuilt binary at /usr/local/bin/storm
 FROM $FAST_BASE_IMAGE AS base-fast
-ENV UMB_UMBI_SPEC=umbi
+# umbi 0.2.12 (the current PyPI release) cannot read valuations with bitstring>=5; drop the pin
+# once a release containing the fix (0.2.13) is on PyPI.
+ENV UMB_UMBI_SPEC=umbi UMB_UMBI_PIN=bitstring<5
 
 
 ######################################################################
@@ -38,7 +40,7 @@ RUN cmake -DCMAKE_BUILD_TYPE=Release -DSTORM_PORTABLE=ON \
           -DSTORM_USE_CLN_RF=ON .. \
  && make -j $no_threads binaries \
  && ln -s /opt/storm/build/bin/storm /usr/local/bin/storm
-ENV UMB_UMBI_SPEC="umbi @ git+https://github.com/randriu/umbi.git"
+ENV UMB_UMBI_SPEC="umbi @ git+https://github.com/randriu/umbi.git" UMB_UMBI_PIN=
 
 
 ######################################################################
@@ -81,8 +83,8 @@ RUN bash install-modest.sh
 
 RUN storm --version
 
-# umbi. Workaround: umbi (as of 0.2.12) cannot read valuations with bitstring>=5.
-RUN python3 -m pip install --no-cache-dir "$UMB_UMBI_SPEC" "bitstring<5"
+# umbi (the pin, if any, is set per flavor above)
+RUN python3 -m pip install --no-cache-dir "$UMB_UMBI_SPEC" $UMB_UMBI_PIN
 
 # Regression models (separate repository)
 ARG REGRESSION_REPO=https://github.com/pmc-tools/umb-regression.git
