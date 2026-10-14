@@ -1,0 +1,27 @@
+# Usage:  docker compose up fast        (or: source)
+# Notebook: http://localhost:8000/lab?token=umb   (override: UMB_PORT, JUPYTER_TOKEN)
+# Tests:    docker compose run --rm fast pytest tests
+# The port is only published on localhost; the token is a convenience, not a
+# security boundary, so do not expose the port beyond your machine.
+x-common: &common
+  ports:
+    - "127.0.0.1:${UMB_PORT:-8000}:8000"
+  environment:
+    JUPYTER_TOKEN: ${JUPYTER_TOKEN:-umb}
+    UMB_HOST_PORT: ${UMB_PORT:-8000}
+  volumes:
+    - ./work:/opt/umb/work   # scratch space for your own notebooks, persisted on the host
+
+services:
+  fast:
+    <<: *common
+    image: ghcr.io/pmc-tools/umb-observatory:main
+    build:
+      context: .
+      args: { FLAVOR: fast }
+  source:
+    <<: *common
+    image: ghcr.io/pmc-tools/umb-observatory:main-source
+    build:
+      context: .
+      args: { FLAVOR: source }
