@@ -28,24 +28,27 @@ Prism is the release binary (v4.11, `PRISM_VERSION` build arg) in `fast` and bui
 
 ### Running the docker
 
-With docker compose (and `make` shortcuts; use `FLAVOR=source` for the other flavor):
+Two images are published (multi-arch: amd64 and arm64). `ghcr.io/pmc-tools/umb-observatory:main` is the `fast`
+flavor, rebuilt daily; `ghcr.io/pmc-tools/umb-observatory:from-source` is the `source` flavor, rebuilt weekly.
+Start the notebook:
 ```
-make notebook     # Jupyter at http://localhost:8000/lab?token=umb
-make test         # quick tests;  make test-full for all models
-make shell
+docker run --rm -p 127.0.0.1:8000:8000 -e JUPYTER_TOKEN=umb ghcr.io/pmc-tools/umb-observatory:main
 ```
-`docker compose up fast` is the same as `make notebook`. Set `UMB_PORT` or `JUPYTER_TOKEN` to change
-the port or token. The port is published on localhost only. Files saved in `/opt/umb/work` appear in `./work`.
-The published image is the `fast` flavor; pull it instead of building with `docker compose pull fast`, or:
+and open http://localhost:8000/lab?token=umb. Binding to `127.0.0.1` keeps the notebook reachable only from
+your machine. Without `JUPYTER_TOKEN`, the container picks a random token and prints the full URL in its log.
+To use a different port, change the first number of `-p`.
 
+To build an image yourself, pick a flavor:
 ```
-docker run -p 127.0.0.1:8000:8000 ghcr.io/pmc-tools/umb-observatory:main
+docker build -t umb-observatory .                              # fast
+docker build --build-arg FLAVOR=source -t umb-observatory:source .
 ```
-Without `JUPYTER_TOKEN`, the container picks a random token and prints the full URL in `docker logs`.
+Run it like above, with your image name instead of the `ghcr.io` one. Notebooks you create inside the
+container are lost when it exits unless you mount a folder, e.g. `-v "$PWD/work:/opt/umb/work"`.
 
 ### Connecting to the notebook
 
-Open the URL printed at start-up (`docker logs <container>`) in your browser.
+Open the URL from the command above (or the one printed in the container log) in your browser.
 You can go to `getting_started.ipynb` (in the docker container) to get started
 with some opportunities that UMB offers.
 
@@ -78,13 +81,13 @@ As explained in the notebook, to which you can connect as explained above.
 #### From the command line
 In particular, you can run: 
 ```
-docker compose run --rm fast python -m pytest tests
+docker run --rm ghcr.io/pmc-tools/umb-observatory:main python -m pytest tests
 ```
 By default the tests run on the small quick benchmark suite (10 models) in
 `umbtest.benchmarks.quick_prism_files`. To verify UMB support end-to-end across
 all models, run the full suite:
 ```
-docker compose run --rm -e UMB_TEST_MODELS=full fast python -m pytest tests
+docker run --rm -e UMB_TEST_MODELS=full ghcr.io/pmc-tools/umb-observatory:main python -m pytest tests
 ```
 The CI workflow runs the full suite.
 
@@ -107,7 +110,7 @@ Regression models
 The small stored `.umb` files that all tools must be able to read live in a separate repository,
 [pmc-tools/umb-regression](https://github.com/pmc-tools/umb-regression), to keep this one small.
 The Docker image clones it to `/opt/umb-regression` (`REGRESSION_REPO`/`REGRESSION_REF` build args).
-Locally, run `make regression` to clone it into `regression/`, or point `UMB_REGRESSION_DIR` at a checkout.
+Locally, clone it into `regression/` (`git clone https://github.com/pmc-tools/umb-regression.git regression`), or point `UMB_REGRESSION_DIR` at a checkout.
 Without it, `tests/test_regression.py` is skipped.
 
 Continuous Integration

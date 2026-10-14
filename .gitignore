@@ -19,9 +19,6 @@ docker.log
 # Jupyter
 .ipynb_checkpoints/
 getting_started.ipynb
-# Container scratch space
-work/*
-!work/.gitkeep
 
-# Checkout of the umb-regression repository (see make regression)
+# Checkout of the umb-regression repository
 regression/

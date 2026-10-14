@@ -26,7 +26,7 @@ case "${MODE}" in
     (cd /opt/prism/prism && sh install.sh silent)
     ;;
   source)
-    git clone --depth 1 -b "${PRISM_REF:?}" "${PRISM_REPO:?}" /opt/prism
+    /opt/git-checkout.sh "${PRISM_REPO:?}" "${PRISM_REF:?}" /opt/prism
     make -C /opt/prism/prism -j"$(nproc)"
     ;;
   *)

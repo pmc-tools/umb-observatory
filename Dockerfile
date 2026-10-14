@@ -28,12 +28,13 @@ ENV UMB_UMBI_SPEC=umbi UMB_UMBI_PIN=bitstring<5
 # Flavor "source": build Storm from source, mirroring the Storm Dockerfile
 FROM $SOURCE_BASE_IMAGE AS base-source
 ARG storm_repo=https://github.com/moves-rwth/storm.git
+# storm_ref is a branch, tag or commit SHA (CI passes the SHA of master to pin "latest")
 ARG storm_ref=master
 ARG no_threads=4
 ARG carl_repo="https://github.com/stormchecker/carl-storm.git"
 ARG carl_tag="14.36"
-WORKDIR /opt
-RUN git clone --depth 1 -b $storm_ref $storm_repo storm
+COPY .docker/git-checkout.sh /opt/git-checkout.sh
+RUN /opt/git-checkout.sh $storm_repo $storm_ref /opt/storm
 WORKDIR /opt/storm/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DSTORM_PORTABLE=ON \
           -DSTORM_CARL_GIT_REPO=$carl_repo -DSTORM_CARL_GIT_TAG=$carl_tag \
@@ -71,7 +72,7 @@ ARG PRISM_REPO=https://github.com/prismmodelchecker/prism.git
 ARG PRISM_REF=master
 ENV PRISM_VERSION=$PRISM_VERSION PRISM_REPO=$PRISM_REPO PRISM_REF=$PRISM_REF
 WORKDIR /opt/
-COPY .docker/install-prism.sh install-prism.sh
+COPY .docker/git-checkout.sh .docker/install-prism.sh ./
 RUN bash install-prism.sh "$([ "$FLAVOR" = source ] && echo source || echo binary)"
 
 # Modest
@@ -83,13 +84,16 @@ RUN bash install-modest.sh
 
 RUN storm --version
 
-# umbi (the pin, if any, is set per flavor above)
-RUN python3 -m pip install --no-cache-dir "$UMB_UMBI_SPEC" $UMB_UMBI_PIN
+# umbi: the default spec and the pin, if any, are set per flavor above. UMBI_SPEC overrides the
+# spec (CI passes e.g. umbi==0.2.12 or umbi @ git+...@<sha> so cached layers cannot go stale).
+ARG UMBI_SPEC=
+RUN python3 -m pip install --no-cache-dir "${UMBI_SPEC:-$UMB_UMBI_SPEC}" $UMB_UMBI_PIN
 
 # Regression models (separate repository)
 ARG REGRESSION_REPO=https://github.com/pmc-tools/umb-regression.git
 ARG REGRESSION_REF=main
-RUN git clone --depth 1 -b $REGRESSION_REF $REGRESSION_REPO /opt/umb-regression
+COPY .docker/git-checkout.sh /opt/git-checkout.sh
+RUN /opt/git-checkout.sh $REGRESSION_REPO $REGRESSION_REF /opt/umb-regression
 ENV UMB_REGRESSION_DIR=/opt/umb-regression
 
 RUN mkdir /opt/umb
